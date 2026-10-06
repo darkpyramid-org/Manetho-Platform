@@ -1,0 +1,191 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Manetho design tokens ───────────────────────────
+     Obsidian (primary), sandstone (secondary),
+     ancient gold (accent), papyrus/ivory (supporting).
+     ─────────────────────────────────────────────────── */
+  --color-obsidian: #09090d;
+  --color-charcoal: #101016;
+  --color-stone: #16161e;
+  --color-slate: #1e1e28;
+  --color-ash: #2a2a36;
+  --color-mist: #4a4a58;
+
+  --color-sandstone: #c9b99b;
+  --color-sand: #e3d5bd;
+  --color-sand-deep: #a89578;
+
+  --color-gold: #c9a227;
+  --color-gold-bright: #e6c65c;
+  --color-gold-deep: #9a7b1a;
+
+  --color-papyrus: #f4ebdc;
+  --color-ivory: #fbf7ef;
+  --color-terracotta: #b4552d;
+  --color-nile: #4b8a9c;
+  --color-fayum: #7d9b76;
+  --color-lapis: #3d5a80;
+
+  --color-danger: #c0453e;
+  --color-success: #5d8a64;
+  --color-warning: #c9a227;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-marcellus), var(--font-inter), ui-serif, serif;
+  --font-hiero: var(--font-hiero-fallback), "Segoe UI Historic",
+    "Noto Sans Egyptian Hieroglyphs", "Aegean", "New Athena Unicode", sans-serif;
+  --font-mono: var(--font-mono-stack), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --shadow-gold: 0 0 0 1px color-mix(in srgb, var(--color-gold) 30%, transparent);
+  --shadow-stone: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -8px rgb(0 0 0 / 0.6);
+
+  --animate-scan-line: scan-line 2.4s linear infinite;
+  --animate-pulse-ring: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-fade-up: fade-up 0.5s ease-out both;
+  --animate-grain: grain 8s steps(10) infinite;
+}
+
+/* ── Font stacks ──────────────────────────────────────────
+   Defined as local stacks so the app builds and renders
+   without any network font fetch. When Noto/Marcellus and
+   friends are installed on the visitor's machine they are
+   used; otherwise the system stack applies.
+   ──────────────────────────────────────────────────────── */
+:root {
+  --font-inter: "Inter", "Segoe UI", ui-sans-serif, system-ui,
+    -apple-system, "Helvetica Neue", sans-serif;
+  --font-marcellus: "Marcellus", "Iowan Old Style",
+    "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --font-arabic: "Noto Sans Arabic", "Segoe UI", "Tahoma",
+    "Geeza Pro", "Arabic Typesetting", sans-serif;
+  --font-hiero-fallback: "Segoe UI Historic",
+    "Noto Sans Egyptian Hieroglyphs", "Aegean",
+    "New Athena Unicode", "GardinerA", serif;
+  --font-mono-stack: ui-monospace, "SF Mono", "Cascadia Mono",
+    "Roboto Mono", Menlo, monospace;
+}
+
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.05); opacity: 0.35; }
+  100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes grain {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-2%, -3%); }
+  30% { transform: translate(3%, -2%); }
+  50% { transform: translate(-3%, 2%); }
+  70% { transform: translate(2%, 3%); }
+  90% { transform: translate(-1%, 1%); }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html[dir="rtl"] body {
+  font-family: var(--font-arabic), var(--font-sans);
+}
+
+body {
+  background-color: var(--color-obsidian);
+  color: var(--color-papyrus);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Hieroglyphic text treatment */
+.hiero {
+  font-family: var(--font-hiero);
+  font-size: 1.35em;
+  line-height: 1;
+}
+
+/* Archaeological scan-line texture */
+.texture-scan {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    color-mix(in srgb, var(--color-gold) 4%, transparent) 3px,
+    color-mix(in srgb, var(--color-gold) 4%, transparent) 4px
+  );
+}
+
+/* Subtle papyrus grain */
+.texture-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+}
+
+/* Gold hairline used on cards and dividers */
+.gold-line {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-gold) 55%, transparent) 20%,
+    color-mix(in srgb, var(--color-gold) 55%, transparent) 80%,
+    transparent
+  );
+  height: 1px;
+}
+
+/* Egyptian geometric motif (Meander/knot pattern) */
+.motif-meander {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2 22V8h6v6h6v6h6' fill='none' stroke='%23c9a227' stroke-opacity='0.25' stroke-width='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+/* Focus visibility — WCAG 2.2 */
+:where(a, button, [role="button"], input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-obsidian);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ash);
+  border-radius: 5px;
+  border: 2px solid var(--color-obsidian);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-mist);
+}

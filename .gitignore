@@ -1,0 +1,41 @@
+# dependencies
+node_modules
+.pnp
+.pnp.*
+
+# next.js
+.next/
+out/
+
+# testing
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# env
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# misc
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+
+# build and tooling logs (never useful in the repository)
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# uploads (never commit user content)
+public/uploads/
+storage/
+
+# prisma
+prisma/migrations/dev.db
+
+# generated client (produced by `prisma generate`)
+lib/generated/

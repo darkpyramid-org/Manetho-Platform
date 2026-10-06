@@ -1,0 +1,49 @@
+{
+  "name": "Manetho — Ancient Egypt, understood through AI",
+  "short_name": "Manetho",
+  "description": "Read hieroglyphs, explore museum collections and learn about Ancient Egypt with a transparent AI assistant.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#09090d",
+  "theme_color": "#09090d",
+  "categories": ["education", "books", "reference"],
+  "lang": "en",
+  "dir": "auto",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Translate an inscription",
+      "short_name": "Translate",
+      "url": "/translator",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Ask the assistant",
+      "short_name": "Assistant",
+      "url": "/assistant",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Museum map",
+      "short_name": "Map",
+      "url": "/app/map",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}

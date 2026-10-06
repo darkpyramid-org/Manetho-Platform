@@ -1,0 +1,545 @@
+// Manetho data model (spec §41, §70).
+//
+// This file documents the production schema. The MVP runs on
+// the in-memory repository in lib/data, which implements the
+// same interfaces, so the app works with no database. When
+// DATABASE_URL is set, generate the client with `npm run
+// db:generate` and implement the repository interfaces in
+// lib/data against Prisma.
+//
+// Every model that backs user-facing content carries an audit
+// trail (status, createdBy, reviewedBy, reviewedAt) because
+// museum records need provenance before publication.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Identity & access ────────────────────────────────────
+
+enum UserRole {
+  USER
+  RESEARCHER
+  MUSEUM_EDITOR
+  MUSEUM_ADMIN
+  CONTENT_EDITOR
+  SUPER_ADMIN
+}
+
+model User {
+  id          String     @id @default(cuid())
+  email       String     @unique
+  displayName String
+  role        UserRole   @default(USER)
+  locale      String     @default("en")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Institution-scoped editors may only touch these museums.
+  museumGrants MuseumGrant[]
+  authored     Artifact[]     @relation("ArtifactAuthor")
+  reviewed     Translation[]   @relation("TranslationReviewer")
+  auditEvents  AuditEvent[]
+
+  @@index([role])
+}
+
+model MuseumGrant {
+  userId    String
+  museumId  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  museum    Museum   @relation(fields: [museumId], references: [id], onDelete: Cascade)
+
+  @@id([userId, museumId])
+}
+
+// ── Content status ───────────────────────────────────────
+
+enum ContentStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+// ── Museums & floor plans ────────────────────────────────
+
+model Museum {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  name         String
+  nameOriginal String?
+  description  String
+  country      String
+  city         String
+  address      String
+  // Geographic position for the map list. Floor plans use a
+  // separate 0–1000 space, deliberately decoupled (spec §14).
+  latitude     Float
+  longitude    Float
+  coverImage   String?
+  openingHours String?
+  website      String?
+  timezone     String
+  status       ContentStatus @default(DRAFT)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  floors       MuseumFloor[]
+  artifacts    Artifact[]
+  tours        Tour[]
+  arExperiences ArExperience[]
+  grants       MuseumGrant[]
+  sources      Source[]
+
+  @@index([city])
+}
+
+model MuseumFloor {
+  id         String @id @default(cuid())
+  museumId   String
+  name       String
+  /// Negative for basements, matching building conventions.
+  level      Int
+  /// Plan coordinate space. Fixed at 0–1000 so SVG, GeoJSON
+  /// and future BLE/UWB positioning share one model.
+  planWidth  Int    @default(1000)
+  planHeight Int    @default(1000)
+  planData   Json?
+  museum     Museum @relation(fields: [museumId], references: [id], onDelete: Cascade)
+
+  rooms  MuseumRoom[]
+  zones  MuseumZone[]
+
+  @@index([museumId, level])
+}
+
+model MuseumRoom {
+  id           String      @id @default(cuid())
+  floorId      String
+  name         String
+  x            Int
+  y            Int
+  width        Int
+  height       Int
+  category     String
+  /// Whether the room is reachable step-free. Drives the
+  /// accessibility filter in the visitor map.
+  accessibility Boolean    @default(true)
+  floor        MuseumFloor @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  artifacts    Artifact[]
+
+  @@index([floorId])
+}
+
+model MuseumZone {
+  id       String      @id @default(cuid())
+  floorId  String
+  name     String
+  /// Polygon in plan space.
+  polygon  Json
+  theme    String?
+  floor    MuseumFloor @relation(fields: [floorId], references: [id], onDelete: Cascade)
+}
+
+// ── Artifacts ────────────────────────────────────────────
+
+model Artifact {
+  id              String        @id @default(cuid())
+  slug            String        @unique
+  museumId        String
+  roomId          String?
+  name            String
+  description     String
+  period          String
+  dynasty         String?
+  dateFrom        String?
+  dateTo          String?
+  material        String?
+  dimensions      String?
+  creator         String?
+  culture         String?
+  inventoryNumber String
+  images          String[]
+  tags            String[]
+  featured        Boolean       @default(false)
+  status          ContentStatus @default(DRAFT)
+  metadata        Json?
+  createdById     String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  museum      Museum       @relation(fields: [museumId], references: [id], onDelete: Cascade)
+  room        MuseumRoom?  @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  createdBy   User?        @relation("ArtifactAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  inscriptions Inscription[]
+  translations Translation[]
+  tourStops   TourStop[]
+  model3d      Model3D?
+  audio        AudioGuide?
+  relatedFrom  ArtifactLink[] @relation("RelatedFrom")
+  relatedTo    ArtifactLink[] @relation("RelatedTo")
+
+  @@index([museumId])
+  @@index([period])
+  @@index([status])
+}
+
+model ArtifactLink {
+  fromId String
+  toId   String
+  from   Artifact @relation("RelatedFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to     Artifact @relation("RelatedTo", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@id([fromId, toId])
+}
+
+/**
+ * A transcription an editor has recorded for an object, as
+ * distinct from an AI reading (see Translation). Keeping them
+ * separate matters: an editorial transcription is authoritative,
+ * an AI reading is a hypothesis awaiting review.
+ */
+model Inscription {
+  id              String   @id @default(cuid())
+  artifactId      String
+  transliteration String
+  translation     String
+  /// Gardiner codes of the signs in the transcription.
+  signIds         String[]
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  artifact Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+
+  @@index([artifactId])
+}
+
+model Model3D {
+  id         String   @id @default(cuid())
+  artifactId String   @unique
+  modelUrl   String
+  posterUrl  String?
+  scale      Float?
+  format     String   @default("glb")
+  artifact   Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+}
+
+model AudioGuide {
+  id           String   @id @default(cuid())
+  artifactId   String   @unique
+  audioUrl     String
+  durationSec  Int
+  language     String   @default("en")
+  transcript   String?
+  artifact     Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+}
+
+model ArExperience {
+  id          String   @id @default(cuid())
+  museumId    String
+  artifactId  String?
+  name        String
+  modelUrl    String
+  markerScale Float?
+  metadata    Json?
+  museum      Museum   @relation(fields: [museumId], references: [id], onDelete: Cascade)
+
+  @@index([museumId])
+}
+
+// ── Hieroglyph database ──────────────────────────────────
+
+model HieroglyphSign {
+  id             String   @id @default(cuid())
+  /// Gardiner code, e.g. "G017". The "Aa" group is why this
+  /// cannot be normalised to upper case.
+  gardinerCode   String   @unique
+  /// Unicode code point, e.g. "U+13153". Always inside the
+  /// Egyptian Hieroglyphs block U+13000–U+1342F.
+  unicode        String   @unique
+  glyph          String
+  name           String
+  description    String
+  /// Gardiner category letter: "A" | "B" | ... | "Aa"
+  category       String
+  signType       String
+  /// Phonetic values in Egyptological transliteration.
+  phoneticValues String[]
+  /// Manual Descriptive Catalogue code, e.g. "G17".
+  mdc            String?
+  ideographicMeaning   String?
+  determinativeMeaning String?
+  era            String?
+  variants       String[]
+
+  lessons       LessonSign[]
+  translations  TranslationSign[]
+
+  @@index([category])
+  @@index([signType])
+}
+
+// ── Translations & AI review ─────────────────────────────
+
+enum TranslationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  LOW_CONFIDENCE
+}
+
+model Translation {
+  id            String           @id @default(cuid())
+  artifactId    String?
+  imageKey      String
+  status        TranslationStatus @default(PENDING)
+  /// Zod-validated output. Never stored unvalidated.
+  result        Json?
+  overallConfidence Float?
+  /// Which provider produced this, for auditability.
+  provider      String
+  model         String?
+  isDemo        Boolean          @default(false)
+  requestId     String           @unique
+  reviewedById  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime         @default(now())
+
+  artifact   Artifact?           @relation(fields: [artifactId], references: [id], onDelete: SetNull)
+  reviewedBy User?               @relation("TranslationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  detections TranslationSign[]
+  sources    TranslationSource[]
+  feedback   TranslationFeedback[]
+  audit      AuditEvent[]
+
+  @@index([status])
+  @@index([artifactId])
+}
+
+/// One detected sign inside a translation, with its own
+/// confidence. Per-sign confidence is what makes an uncertain
+/// reading inspectable rather than all-or-nothing.
+model TranslationSign {
+  id             String     @id @default(cuid())
+  translationId  String
+  signId         String
+  /// Relative 0–1 coordinates within the uploaded image.
+  x              Float
+  y              Float
+  width          Float
+  height         Float
+  confidence     Float
+  confidenceLevel String
+  transliteration String?
+
+  translation Translation    @relation(fields: [translationId], references: [id], onDelete: Cascade)
+  sign        HieroglyphSign @relation(fields: [signId], references: [id])
+
+  @@index([translationId])
+}
+
+model TranslationFeedback {
+  id            String   @id @default(cuid())
+  translationId String
+  rating        Int
+  comment       String?
+  createdAt     DateTime @default(now())
+
+  translation Translation @relation(fields: [translationId], references: [id], onDelete: Cascade)
+}
+
+// ── Assistant conversations ──────────────────────────────
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String?
+  mode      String   @default("visitor")
+  createdAt DateTime @default(now())
+
+  messages AssistantMessage[]
+}
+
+model AssistantMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  citations      Json?
+  context        Json?
+  feedback       String?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+// ── Learning ─────────────────────────────────────────────
+
+model Course {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  description String
+  level       String
+  coverImage  String?
+  status      ContentStatus @default(DRAFT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  lessons Lesson[]
+}
+
+model Lesson {
+  id              String        @id @default(cuid())
+  courseId        String
+  slug            String        @unique
+  order           Int
+  title           String
+  summary         String
+  content         Json
+  durationMinutes Int
+  status          ContentStatus @default(DRAFT)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  course Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  signs  LessonSign[]
+  quiz   Quiz?
+
+  @@index([courseId, order])
+}
+
+model LessonSign {
+  lessonId String
+  signId   String
+  lesson   Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  sign     HieroglyphSign @relation(fields: [signId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, signId])
+}
+
+model Quiz {
+  id       String @id @default(cuid())
+  lessonId String @unique
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  questions QuizQuestion[]
+}
+
+model QuizQuestion {
+  id           String @id @default(cuid())
+  quizId       String
+  prompt       String
+  kind         String @default("multiple_choice")
+  options      Json
+  correctIndex Int
+  /// Every quiz question explains its answer, right or wrong.
+  explanation  String
+  signId       String?
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+}
+
+// ── Tours ────────────────────────────────────────────────
+
+model Tour {
+  id            String        @id @default(cuid())
+  museumId      String
+  title         String
+  description   String
+  theme         String?
+  durationMinutes Int
+  language      String        @default("en")
+  accessibility String        @default("full")
+  status        ContentStatus @default(DRAFT)
+
+  museum Museum     @relation(fields: [museumId], references: [id], onDelete: Cascade)
+  stops  TourStop[]
+
+  @@index([museumId])
+}
+
+model TourStop {
+  id             String @id @default(cuid())
+  tourId         String
+  order          Int
+  artifactId     String
+  title          String
+  narration      String
+  durationSeconds Int
+
+  tour     Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  artifact Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+
+  @@unique([tourId, order])
+}
+
+// ── Sources ──────────────────────────────────────────────
+
+enum SourceType {
+  BOOK
+  PAPER
+  MUSEUM
+  DATABASE
+  WEBSITE
+  CATALOG
+  ARCHIVE
+}
+
+model Source {
+  id              String     @id @default(cuid())
+  type            SourceType
+  title           String
+  author          String?
+  publisher       String?
+  url             String?
+  publicationDate String?
+  citationText    String
+
+  museums      Museum[]
+  translations TranslationSource[]
+
+  @@index([type])
+}
+
+model TranslationSource {
+  translationId String
+  sourceId      String
+
+  translation Translation @relation(fields: [translationId], references: [id], onDelete: Cascade)
+  source      Source      @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@id([translationId, sourceId])
+}
+
+// ── Audit ────────────────────────────────────────────────
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  /// Set when this event records a change to a translation
+  /// review decision.
+  translationId String?
+  createdAt  DateTime @default(now())
+
+  actor       User?        @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  translation Translation? @relation(fields: [translationId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([translationId])
+  @@index([createdAt])
+}
