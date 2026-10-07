@@ -71,12 +71,20 @@ export function ConfidenceBadge({
   );
 }
 
-/** Marks demo/generated content clearly (spec §86). */
+/**
+ * Marks demo/generated content clearly (spec §86).
+ *
+ * `label` is required rather than defaulted. The default was the
+ * literal string "Demo", and four call sites passed their own
+ * hardcoded English instead, so the Arabic UI rendered "Demo mode"
+ * and "Demo output" in English on three pages. Making the prop
+ * required turns that class of bug into a type error.
+ */
 export function DemoBadge({
-  label = "Demo",
+  label,
   className,
 }: {
-  label?: string;
+  label: string;
   className?: string;
 }) {
   return (

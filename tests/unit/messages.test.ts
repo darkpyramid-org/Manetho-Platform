@@ -33,6 +33,21 @@ function keyPaths(
 const enKeys = keyPaths(en);
 const arKeys = keyPaths(ar);
 
+/** Flatten a catalog into dotted paths paired with their values. */
+function entries(value: unknown, prefix = ""): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    out.push([prefix, String(value)]);
+    return out;
+  }
+  for (const [key, child] of Object.entries(value)) {
+    for (const entry of entries(child, prefix ? `${prefix}.${key}` : key)) {
+      out.push(entry);
+    }
+  }
+  return out;
+}
+
 describe("message catalogs", () => {
   it("define the same namespaces", () => {
     expect([...enKeys].sort()).toEqual([...arKeys].sort());
@@ -79,6 +94,8 @@ describe("message catalogs", () => {
     "common.confidence",
     "common.sources",
     "common.demoBadge",
+    "common.demoMode",
+    "common.demoOutput",
     "artifact.inventoryWarning",
     "artifact.inscription",
     "artifact.askAbout",
@@ -111,6 +128,35 @@ describe("message catalogs", () => {
     expect(ar.errors.boundaries.title).not.toBe(en.errors.boundaries.title);
     expect(ar.translate.disclaimer).not.toBe(en.translate.disclaimer);
     expect(ar.assistant.disclaimer).not.toBe(en.assistant.disclaimer);
+    expect(ar.translate.demoProviderNotice).not.toBe(
+      en.translate.demoProviderNotice,
+    );
+  });
+
+  it("has no untranslated English left in the Arabic catalogue", () => {
+    // The demo labels were rendered from hardcoded English
+    // literals for the life of the project, so the Arabic UI
+    // showed "Demo mode" and "Demo output" verbatim. The keys
+    // existed and were correctly translated the whole time; the
+    // components simply never used them. This catches the class
+    // of bug rather than the instance.
+    const expectsLatin = new Set([
+      "Manetho",
+      "English", // endonym: a language names itself
+      "Arabic",
+    ]);
+
+    const offenders: string[] = [];
+    for (const [key, value] of entries(ar)) {
+      if (typeof value !== "string") continue;
+      if (/[\u0600-\u06FF]/.test(value)) continue;
+      if (expectsLatin.has(value.trim())) continue;
+      offenders.push(`${key} = "${value}"`);
+    }
+    expect(
+      offenders,
+      `untranslated Arabic values: ${offenders.join(", ")}`,
+    ).toEqual([]);
   });
 
   it("contains Arabic script in the Arabic catalog", () => {

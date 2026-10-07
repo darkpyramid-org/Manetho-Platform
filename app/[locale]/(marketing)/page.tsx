@@ -25,6 +25,7 @@ import { isDemoMode } from "@/lib/features";
  */
 export default function HomePage() {
   const t = useTranslations("home");
+  const tc = useTranslations("common");
   const featured = featuredArtifacts().slice(0, 4);
   const demo = isDemoMode();
 
@@ -83,7 +84,7 @@ export default function HomePage() {
         <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
           {demo ? (
             <div className="mb-8 flex justify-center">
-              <DemoBadge label="Demo mode" />
+              <DemoBadge label={tc("demoMode")} />
             </div>
           ) : null}
 

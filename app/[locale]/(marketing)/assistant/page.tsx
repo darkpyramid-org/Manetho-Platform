@@ -29,6 +29,7 @@ export default async function AssistantPage({
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "assistant" });
   const td = await getTranslations({ locale, namespace: "assistant" });
+  const tc = await getTranslations({ locale, namespace: "common" });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -37,7 +38,7 @@ export default async function AssistantPage({
           <h1 className="font-display text-3xl text-papyrus sm:text-4xl">
             {t("title")}
           </h1>
-          {isDemoMode() ? <DemoBadge label="Demo mode" /> : null}
+          {isDemoMode() ? <DemoBadge label={tc("demoMode")} /> : null}
         </div>
         <p className="mt-3 max-w-2xl text-sandstone">{t("subtitle")}</p>
         {isDemoMode() ? (

@@ -56,7 +56,7 @@ export function TranslationResultView({
               level={result.overallConfidenceLevel}
               value={result.overallConfidence}
             />
-            {result.isDemo ? <DemoBadge /> : null}
+            {result.isDemo ? <DemoBadge label={tc("demoBadge")} /> : null}
           </div>
         </CardHeader>
 

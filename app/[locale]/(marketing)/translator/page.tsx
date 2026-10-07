@@ -30,6 +30,7 @@ export default async function TranslatorPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "translate" });
+  const tc = await getTranslations({ locale, namespace: "common" });
   const samples = sampleInscriptions();
 
   return (
@@ -39,11 +40,20 @@ export default async function TranslatorPage({
           <h1 className="font-display text-3xl text-papyrus sm:text-4xl">
             {t("title")}
           </h1>
-          {isDemoMode() ? <DemoBadge label="Demo mode" /> : null}
+          {isDemoMode() ? <DemoBadge label={tc("demoMode")} /> : null}
         </div>
         <p className="mt-3 max-w-2xl text-sandstone">
           {t("subtitle")}
         </p>
+        {/* Spec §86: state plainly where a reading came from.
+            This string existed in both catalogues and was never
+            rendered, so the page claimed demo mode with a badge
+            while never explaining what "demo" means. */}
+        {isDemoMode() ? (
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-sandstone/75">
+            {t("demoProviderNotice")}
+          </p>
+        ) : null}
       </header>
 
       <Translator samples={samples} palette={manualSignPalette()} />

@@ -191,6 +191,10 @@ function CropDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const t = useTranslations("translate");
+  // "cancel" lives in `common`; this component previously asked
+  // the `translate` namespace for it, so the crop dialog's cancel
+  // button rendered the raw key.
+  const tc = useTranslations("common");
   const imageDataUrl = useTranslatorStore((state) => state.imageDataUrl);
   const imageDimensions = useTranslatorStore(
     (state) => state.imageDimensions,
@@ -260,7 +264,7 @@ function CropDialog({
 
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            {t("cancel")}
+            {tc("cancel")}
           </Button>
           <Button
             onClick={() => {

@@ -29,6 +29,7 @@ export default async function AdminReviewsPage({
   const { locale } = await params;
   setRequestLocale(locale as Locale);
   const t = await getTranslations({ locale, namespace: "admin" });
+  const tc = await getTranslations({ locale, namespace: "common" });
   const session = await getSession();
 
   if (!can(session, "ai:review")) {
@@ -79,7 +80,7 @@ export default async function AdminReviewsPage({
         <h2 className="font-display text-xl text-papyrus">
           {t("nav.reviews")}
         </h2>
-        {isDemoMode() ? <DemoBadge label="Demo output" /> : null}
+        {isDemoMode() ? <DemoBadge label={tc("demoOutput")} /> : null}
         <Badge tone={live ? "success" : "neutral"}>
           {live ? "PostgreSQL" : "Seed fixtures"}
         </Badge>

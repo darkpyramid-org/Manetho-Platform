@@ -26,7 +26,11 @@
     "audit:bundle": "tsx scripts/audit-bundle.ts",
     "audit:fonts": "tsx scripts/audit-fonts.ts",
     "audit:data": "tsx scripts/audit-dataset-weight.ts",
-    "audit": "npm run audit:imports && npm run audit:links && npm run audit:bundle && npm run audit:fonts"
+    "audit:i18n": "tsx scripts/audit-i18n.ts",
+    "audit:i18n-usage": "tsx scripts/audit-i18n-usage.ts",
+    "i18n:prune": "tsx scripts/prune-messages.ts",
+    "i18n:prune:apply": "tsx scripts/prune-messages.ts --write",
+    "audit": "npm run audit:imports && npm run audit:links && npm run audit:bundle && npm run audit:fonts && npm run audit:i18n && npm run audit:i18n-usage"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
