@@ -1,0 +1,41 @@
+fix: prerender nested dynamic routes and add deployment configuration
+
+Two bugs found by running the production build, both invisible in
+development and in `next dev`:
+
+- `generateStaticParams` on the museum and artifact pages returned
+  only the locale, leaving the [museumId] / [artifactId] segment
+  unresolved. Next could not prerender those routes and fell back to
+  on-demand rendering, which failed with DYNAMIC_SERVER_USAGE. Every
+  Arabic museum and artifact page returned 500 while the English
+  ones appeared to work. Now that params are generated for both
+  segments, the build produces 100 static pages instead of 52.
+- The artifact page read "inventory" from the `artifact` namespace,
+  but that key lives in `common`. English silently fell through;
+  Arabic threw MISSING_MESSAGE and took the page down.
+
+Deployment
+
+- prisma/migrations/20260101000000_init holds the schema as
+  version-controlled SQL rather than relying on `db push`, so
+  `prisma migrate deploy` is safe to run on every build.
+- vercel.json runs migrate deploy + generate + build, and pins the
+  AI routes to a 60s max duration. It also stops the service worker
+  being cached, which would otherwise serve a stale worker.
+
+Verification
+
+- scripts/verify-db.ts checks the seeded database in SQL: row counts,
+  referential integrity, and the hieroglyph invariants (code points
+  inside U+13000-U+1342F, each glyph rendered from its own declared
+  code point, no duplicate code points, all 24 phonemes present).
+- scripts/load-env.ts lets scripts run under tsx read .env.local,
+  which the Prisma CLI loads via prisma.config.ts but a direct
+  script run does not.
+- tests/unit/messages.test.ts asserts the two catalogs have
+  identical key structure, no empty strings, and that the honesty
+  statements are genuinely translated rather than copied.
+
+Verified: 177 tests passing, typecheck clean, production build
+green, and all 23 routes returning 200 including the Arabic
+museum and artifact pages that previously failed.

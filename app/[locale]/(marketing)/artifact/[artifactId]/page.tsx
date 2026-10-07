@@ -21,16 +21,26 @@ import { ArtifactCard } from "@/components/artifacts/artifact-card";
 import { Glyph } from "@/components/hieroglyph/sign-display";
 import {
   artifactRepository,
+  artifacts,
   findArtifact,
   findMuseum,
   findRoom,
   floorForRoom,
   hieroglyphRepository,
 } from "@/lib/data";
-import type { Locale } from "@/i18n.config";
+import { routing, type Locale } from "@/i18n.config";
 
+/**
+ * Every param must be returned for a nested dynamic route.
+ * Returning only the locale leaves the [artifactId] segment
+ * unresolved, so Next cannot prerender these pages and falls
+ * back to on-demand rendering — which then fails with
+ * DYNAMIC_SERVER_USAGE.
+ */
 export function generateStaticParams() {
-  return ["en", "ar"].map((locale) => ({ locale }));
+  return routing.locales.flatMap((locale) =>
+    artifacts.map((artifact) => ({ locale, artifactId: artifact.slug })),
+  );
 }
 
 export async function generateMetadata({
@@ -202,7 +212,7 @@ export default async function ArtifactPage({
                 />
                 <Field
                   icon={Info}
-                  label={t("inventory")}
+                  label={tc("inventory")}
                   value={artifact.inventoryNumber}
                 />
                 <Field

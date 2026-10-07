@@ -10,6 +10,7 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { loadEnv } from "./load-env";
 import {
   museums,
   artifacts,
@@ -19,6 +20,10 @@ import {
   ALL_SOURCES,
 } from "../lib/data";
 import { translationResponses } from "../lib/data/mock-fixtures";
+
+// The CLI loads this via prisma.config.ts; a direct `tsx
+// scripts/seed.ts` run does not.
+loadEnv();
 
 const prisma = new PrismaClient();
 

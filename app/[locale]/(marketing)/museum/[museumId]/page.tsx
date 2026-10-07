@@ -21,12 +21,22 @@ import {
   artifactsByMuseum,
   findMuseum,
   museumCover,
+  museums,
   tourRepository,
 } from "@/lib/data";
-import type { Locale } from "@/i18n.config";
+import { routing, type Locale } from "@/i18n.config";
 
+/**
+ * Every param must be returned for a nested dynamic route.
+ * Returning only the locale leaves the [museumId] segment
+ * unresolved, so Next cannot prerender these pages and falls
+ * back to on-demand rendering — which then fails with
+ * DYNAMIC_SERVER_USAGE.
+ */
 export function generateStaticParams() {
-  return ["en", "ar"].map((locale) => ({ locale }));
+  return routing.locales.flatMap((locale) =>
+    museums.map((museum) => ({ locale, museumId: museum.slug })),
+  );
 }
 
 export async function generateMetadata({
