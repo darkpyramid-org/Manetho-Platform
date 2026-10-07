@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   artifacts,
   courses,
-  hieroglyphSigns,
   museums,
   sampleInscriptions,
   tourRepository,

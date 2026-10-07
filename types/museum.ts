@@ -119,6 +119,8 @@ export interface MuseumTour {
   stops: TourStop[];
   accessibility: "full" | "partial" | "limited";
   theme: string;
+  /** Editorial status. Mirrors the Prisma Tour.status column. */
+  status: ContentStatus;
 }
 
 export interface TourStop {

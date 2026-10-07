@@ -33,8 +33,7 @@
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-marcellus), var(--font-inter), ui-serif, serif;
-  --font-hiero: var(--font-hiero-fallback), "Segoe UI Historic",
-    "Noto Sans Egyptian Hieroglyphs", "Aegean", "New Athena Unicode", sans-serif;
+  --font-hiero: var(--font-hiero-fallback), serif;
   --font-mono: var(--font-mono-stack), ui-monospace, "SF Mono", Menlo, monospace;
 
   --shadow-gold: 0 0 0 1px color-mix(in srgb, var(--color-gold) 30%, transparent);
@@ -47,23 +46,46 @@
 }
 
 /* ── Font stacks ──────────────────────────────────────────
-   Defined as local stacks so the app builds and renders
-   without any network font fetch. When Noto/Marcellus and
-   friends are installed on the visitor's machine they are
-   used; otherwise the system stack applies.
+   --mf-* are injected by next/font in lib/fonts.ts: the
+   self-hosted faces plus a metric-matched fallback generated
+   at build time, which is what removes layout shift on
+   swap. Each var() carries its own fallback so a stack still
+   resolves if a face is ever unavailable — an undefined
+   var() with no fallback invalidates the whole declaration.
+
+   The Arabic variables are only defined on Arabic routes, so
+   these Arabic stacks resolve to system faces on English
+   pages and to the shipped faces on /ar.
    ──────────────────────────────────────────────────────── */
 :root {
-  --font-inter: "Inter", "Segoe UI", ui-sans-serif, system-ui,
-    -apple-system, "Helvetica Neue", sans-serif;
-  --font-marcellus: "Marcellus", "Iowan Old Style",
-    "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  --font-arabic: "Noto Sans Arabic", "Segoe UI", "Tahoma",
-    "Geeza Pro", "Arabic Typesetting", sans-serif;
-  --font-hiero-fallback: "Segoe UI Historic",
-    "Noto Sans Egyptian Hieroglyphs", "Aegean",
-    "New Athena Unicode", "GardinerA", serif;
+  color-scheme: dark;
+
+  --font-inter: var(--mf-sans, "Inter"), "Segoe UI",
+    ui-sans-serif, system-ui, -apple-system, "Helvetica Neue",
+    sans-serif;
+  --font-marcellus: var(--mf-display, "Marcellus"),
+    "Iowan Old Style", "Palatino Linotype", "Book Antiqua",
+    Georgia, serif;
+  --font-arabic: var(--mf-ar-sans, "Noto Sans Arabic"),
+    "Segoe UI", Tahoma, "Geeza Pro", sans-serif;
+  --font-arabic-display: var(--mf-ar-display, "Noto Naskh Arabic"),
+    Amiri, "Traditional Arabic", serif;
+  --font-hiero-fallback: var(--mf-hiero, "Noto Sans Egyptian Hieroglyphs"),
+    "Segoe UI Historic", "New Athena Unicode", GardinerA,
+    Aegyptus, serif;
   --font-mono-stack: ui-monospace, "SF Mono", "Cascadia Mono",
     "Roboto Mono", Menlo, monospace;
+}
+
+/* Arabic swaps the whole type system at the token level, so
+   no component knows or cares which script it is rendering.
+   Both scripts get a body face with the same humanist
+   construction and a display face from the equivalent
+   calligraphic tradition — Latin inscriptional capitals are
+   answered by Arabic naskh, not by a second UI sans. */
+html[dir="rtl"] {
+  --font-sans: var(--font-arabic), var(--font-inter);
+  --font-display: var(--font-arabic-display), var(--font-marcellus);
 }
 
 @keyframes scan-line {
@@ -188,4 +210,243 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-mist);
+}
+
+/* ══ Light theme ══════════════════════════════════════════
+   The dark palette lives in @theme as the design tokens. This
+   block is its counterpart, not an inversion.
+
+   The mechanism is the whole point. Every colour a component
+   uses — bg-obsidian, text-papyrus, border-ash — resolves to
+   var(--color-*) at runtime. Redefining those variables here
+   re-themes every existing utility at once, so there is no
+   second class name to keep in sync, no `dark:` variant to
+   remember, and no chance of a component shipping with a
+   colour that only works in one theme. Nothing below this
+   comment contains a raw colour.
+
+   Selector specificity (0,1,1) is what makes this win over
+   the tokens @theme emits on :root, whatever order they end
+   up in after Tailwind's cascade layers.
+   ──────────────────────────────────────────────────────── */
+html[data-theme="light"] {
+  color-scheme: light;
+
+  /* Warm limestone and buff paper. A grey inverted dark theme
+     reads as a rendering fault; daylight gallery light does
+     not. */
+  --color-obsidian: #f7f2e7;
+  --color-charcoal: #fffdf8;
+  --color-stone: #f2ecdd;
+  --color-slate: #e9e1cd;
+  --color-ash: #d9cfb7;
+  --color-mist: #a89a7e;
+
+  /* Text ramp: the roles swap, the hues stay. */
+  --color-papyrus: #1b1712;
+  --color-ivory: #ffffff;
+  --color-sand: #2c261d;
+  --color-sandstone: #574d3d;
+  --color-sand-deep: #7d7059;
+
+  /* Gold has to darken, not brighten. #c9a227 on #f7f2e7 is
+     2.1:1 and would fail WCAG AA as text; #8a6a12 is 4.9:1.
+     Every contrast figure here was chosen against the light
+     surface, not derived by rotating the dark value. */
+  --color-gold: #8a6a12;
+  --color-gold-bright: #6b5209;
+  --color-gold-deep: #a8853a;
+
+  --color-terracotta: #a3451f;
+  --color-nile: #2e6476;
+  --color-fayum: #4c6647;
+  --color-lapis: #2b4062;
+
+  --color-danger: #a32b23;
+  --color-success: #2c5f3c;
+  --color-warning: #8a6a12;
+
+  --shadow-gold: 0 0 0 1px
+    color-mix(in srgb, var(--color-gold) 34%, transparent);
+  --shadow-stone: 0 1px 2px rgb(64 52 30 / 0.1),
+    0 8px 24px -10px rgb(64 52 30 / 0.18);
+}
+
+/* ══ Theme toggle ═════════════════════════════════════════
+   Two independent animation systems:
+
+   1. The thumb and its icons animate on CSS transitions, for
+      the control itself. Cheap, composited, no JavaScript.
+   2. The page colours animate on the View Transitions API, or
+      on a temporary global crossfade where that is missing.
+
+   The thumb travels on inset-inline-start rather than a
+   transform, so it mirrors correctly under RTL with no second
+   set of rules and no direction-aware JavaScript.
+   ──────────────────────────────────────────────────────── */
+.theme-toggle {
+  position: relative;
+  flex: none;
+  inline-size: 3.5rem;
+  block-size: 2rem;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-gold) 26%, transparent);
+  background-color: var(--color-slate);
+  view-transition-name: theme-toggle;
+  transition: background-color 220ms ease, border-color 220ms ease;
+}
+
+.theme-toggle:hover {
+  border-color: color-mix(in srgb, var(--color-gold) 55%, transparent);
+}
+
+.theme-toggle__thumb {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-start: 2px;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(
+    145deg,
+    var(--color-gold-bright),
+    var(--color-gold-deep)
+  );
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+  transition: inset-inline-start 380ms cubic-bezier(0.34, 1.4, 0.5, 1),
+    background 300ms ease;
+}
+
+.theme-toggle:active .theme-toggle__thumb {
+  scale: 0.9;
+}
+
+html[data-theme="dark"] .theme-toggle__thumb {
+  inset-inline-start: calc(100% - 1.5rem - 2px);
+}
+
+.theme-toggle__icon {
+  position: absolute;
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  /* Dark ink on the gold thumb in the dark theme. */
+  color: #2a1f05;
+  transition: opacity 240ms ease,
+    rotate 380ms cubic-bezier(0.34, 1.4, 0.5, 1), scale 300ms ease;
+}
+
+/* The thumb gradient darkens with the theme, so the ink on it
+   has to lighten with it. */
+html[data-theme="light"] .theme-toggle__icon {
+  color: #fdf8ea;
+}
+
+/* Icon state is driven by <html data-theme>, never by React
+   state on the button. A view transition snapshots the DOM the
+   instant its callback returns, so anything driven by a state
+   update is captured one commit stale and freezes mid-animation
+   with its transition stuck at time zero. Keying the icons off
+   the same attribute that carries the theme means one
+   synchronous write updates the whole control consistently. */
+.theme-toggle__icon--sun {
+  opacity: 0;
+  rotate: -90deg;
+  scale: 0.5;
+}
+
+html[data-theme="light"] .theme-toggle__icon--sun {
+  opacity: 1;
+  rotate: 0deg;
+  scale: 1;
+}
+
+html[data-theme="light"] .theme-toggle__icon--moon {
+  opacity: 0;
+  rotate: 90deg;
+  scale: 0.5;
+}
+
+/* ══ Page-level theme transition ══════════════════════════
+   Tier 1, View Transitions. One composited snapshot wipes in
+   from the button; nothing else is animated, because animating
+   a hundred elements individually is what makes theme toggles
+   feel slow. The button carries its own name so its icon keeps
+   spinning instead of freezing inside the page snapshot.
+   ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+
+  ::view-transition-old(root) {
+    z-index: 1;
+    animation: manetho-theme-out 460ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
+  ::view-transition-new(root) {
+    z-index: 2;
+    animation: manetho-theme-wipe 460ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
+  ::view-transition-group(theme-toggle) {
+    z-index: 3;
+  }
+
+  ::view-transition-old(theme-toggle) {
+    animation: manetho-toggle-out 220ms ease-in both;
+  }
+
+  ::view-transition-new(theme-toggle) {
+    animation: manetho-toggle-in 420ms 140ms
+      cubic-bezier(0.34, 1.4, 0.5, 1) both;
+  }
+
+  @keyframes manetho-theme-wipe {
+    from {
+      clip-path: circle(0 at var(--vt-x, 50%) var(--vt-y, 50%));
+    }
+    to {
+      clip-path: circle(var(--vt-r, 150vmax) at var(--vt-x, 50%) var(--vt-y, 50%));
+    }
+  }
+
+  @keyframes manetho-theme-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes manetho-toggle-out {
+    to {
+      opacity: 0;
+      transform: rotate(-70deg) scale(0.4);
+    }
+  }
+
+  @keyframes manetho-toggle-in {
+    from {
+      opacity: 0;
+      transform: rotate(70deg) scale(0.4);
+    }
+  }
+}
+
+/* Tier 2, the fallback crossfade. Attached to <html> only for
+   the length of one change and then removed, so the app never
+   carries transition cost during ordinary interaction. */
+html.theme-crossfade *,
+html.theme-crossfade *::before,
+html.theme-crossfade *::after {
+  transition: background-color 300ms ease, border-color 300ms ease,
+    color 300ms ease, fill 300ms ease, stroke 300ms ease,
+    box-shadow 300ms ease, outline-color 300ms ease !important;
 }

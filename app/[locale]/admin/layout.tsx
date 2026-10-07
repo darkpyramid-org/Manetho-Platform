@@ -4,6 +4,7 @@ import { ShieldAlert } from "lucide-react";
 import { getSession, can } from "@/lib/auth/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AdminNav } from "@/components/admin/admin-nav";
 import type { Locale } from "@/i18n.config";
 
 export function generateStaticParams() {
@@ -54,6 +55,8 @@ export default async function AdminLayout({
         </div>
         <p className="mt-3 max-w-2xl text-sandstone">{t("subtitle")}</p>
       </header>
+
+      <AdminNav />
 
       {!allowed ? (
         <Card className="border-warning/40">

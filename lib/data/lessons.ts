@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   LearningCourse,
   LearningLesson,
 } from "@/types/learning";
@@ -36,6 +36,7 @@ export const courses: LearningCourse[] = [
     description:
       "Learn how Egyptian writing actually works — from the 24 consonant signs to determinatives — using real Gardiner signs from the Manetho database.",
     level: "beginner",
+    status: "PUBLISHED",
     coverImage: generatedImage({
       seed: "course-hiero",
       label: "Introduction to Hieroglyphs",
@@ -328,6 +329,7 @@ export const courses: LearningCourse[] = [
     description:
       "The pantheon, the king and the great myths — the world that hieroglyphs describe.",
     level: "beginner",
+    status: "PUBLISHED",
     coverImage: generatedImage({
       seed: "course-culture",
       label: "Gods, Pharaohs and Mythology",
@@ -543,6 +545,7 @@ export const courses: LearningCourse[] = [
     description:
       "The monuments, the dead and the living — the world the inscriptions record.",
     level: "intermediate",
+    status: "PUBLISHED",
     coverImage: generatedImage({
       seed: "course-world",
       label: "Temples, Tombs and Daily Life",
@@ -687,6 +690,7 @@ export const courses: LearningCourse[] = [
     description:
       "Read real formulae and understand how scholars interpret uncertain texts.",
     level: "advanced",
+    status: "PUBLISHED",
     coverImage: generatedImage({
       seed: "course-reading",
       label: "Advanced Reading",

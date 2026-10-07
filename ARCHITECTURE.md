@@ -128,35 +128,38 @@ reviewed and versioned by people who write about Egyptology.
 
 ## 3. Data layer
 
-`lib/data` is the curated in-memory repository. `lib/data/index.ts`
-defines the interfaces — `MuseumRepository`, `ArtifactRepository`,
-`HieroglyphRepository`, `LearningRepository`, `TourRepository` —
-and the seed dataset implements them.
+`lib/data` is the content layer. `lib/data/index.ts` exposes the
+data through five interfaces — `MuseumRepository`,
+`ArtifactRepository`, `HieroglyphRepository`, `LearningRepository`,
+`TourRepository` — which the curated dataset implements. Pages read
+through those interfaces rather than reaching into individual
+files, so the shape of the data is stated once.
 
-`lib/server/repository.ts` implements the same interfaces against
-PostgreSQL via Prisma. `lib/server/prisma.ts` owns the client
-singleton (one connection pool per process, not one per hot
-reload).
+### Reads and writes diverge on purpose
 
-### Which one is active
+`DATABASE_URL` decides the **write** path. Content reads always
+come from the curated dataset, and that is deliberate:
 
-`DATABASE_URL` decides. Nothing above the repository layer changes
-when it is set. The division of labour is deliberate:
+- Museums, artifacts, signs, lessons and tours are reference
+  material that changes on a review cycle, not per request. They
+  are statically generated at build time, which makes them fast,
+  CDN-cacheable, and available offline — and means a build never
+  depends on the production database being reachable.
+- Every inscription reading is written to PostgreSQL with its
+  per-sign confidence. That is what makes the admin review queue
+  real rather than a mock-up, and what allows readings to be
+  compared between providers later.
 
-- **Content reads** — museums, artifacts, signs, lessons, tours —
-  are statically generated at build time from the curated dataset.
-  This is a feature: the sign database and museum records are
-  reference material that changes on a review cycle, not per
-  request, and static generation makes them fast, cacheable and
-  available offline.
-- **Writes** go to PostgreSQL. Every inscription reading is stored
-  with its per-sign confidence, which is what makes the admin
-  review queue real rather than a mock-up, and what allows
-  readings to be compared between providers later.
+`/api/health` reports whether the database is reachable and the
+stored row counts, so a deployment's state is observable without
+guessing.
 
-`/api/health` reports which path is live, whether the database is
-reachable, and the stored row counts — so a deployment's state is
-observable without guessing.
+There is deliberately **no** Prisma-backed read path. An earlier
+version had one; it was removed because nothing used it, and
+having unused code that the architecture document described as
+active is worse than not having it. If database-backed content
+editing is ever needed, that repository belongs with the admin
+CRUD that requires it — not ahead of it.
 
 ### Persistence is best-effort, deliberately
 
@@ -228,6 +231,81 @@ Tailwind v4 with a CSS-first config: the design tokens live in
 `app/[locale]/globals.css` under `@theme`, not in a
 `tailwind.config.js`. Obsidian and charcoal surfaces, sandstone
 text, ancient gold accents, papyrus highlights.
+
+### Theming
+
+There are two themes and no `dark:` variants anywhere. The dark
+palette is the design tokens in `@theme`; `html[data-theme="light"]`
+redefines the same `--color-*` variables. Because every utility
+resolves to `var(--color-*)` at runtime, one block of about thirty
+redefinitions re-themes the entire application. There is no second
+set of class names to keep in sync and no way for a component to ship
+a colour that only works in one theme.
+
+The light palette is not an inversion. It is warm limestone and buff
+paper; a grey inverted dark theme reads as a rendering fault. Gold is
+darkened rather than brightened, because `#c9a227` on a light surface
+is 2.1:1 and `#8a6a12` is 4.5:1. Every colour in the light block was
+chosen against a light surface rather than derived by rotating the
+dark value.
+
+`components/theme/theme-script.tsx` writes the theme to `<html>`
+inline, before first paint. It is not an effect: an effect runs after
+the first paint, which is precisely the flash of the wrong theme the
+script exists to prevent. It defaults to the OS preference but an
+explicit choice wins permanently, and it keeps following the OS only
+while no explicit choice exists.
+
+The toggle animates in two tiers. Where the View Transitions API
+exists, the change is a single circular wipe expanding from the button
+— one composited snapshot, rather than animating a hundred elements
+individually, which is what makes most theme toggles feel slow.
+Elsewhere it falls back to a short global crossfade applied only for
+the length of one change. `prefers-reduced-motion` makes both tiers
+an instant repaint.
+
+The toggle's own visuals key off `html[data-theme]`, not React state.
+A view transition snapshots the DOM the instant its callback returns,
+so anything driven by a state update is captured one commit stale and
+freezes mid-animation with its transition stuck at time zero. React
+state carries the accessible label only.
+
+### Typography
+
+`lib/fonts.ts` declares five faces through `next/font`. The files are
+downloaded once at build time and served from our own origin: no
+runtime request ever reaches Google, which is both a privacy property
+and the reason this is fast. `adjustFontFallback` generates a
+metric-matched fallback per face, so swapping does not shift layout.
+
+| Role | Face | Why |
+| --- | --- | --- |
+| Latin body | Inter | Legible at the 12–14px this app uses most; tabular figures, so Gardiner codes and Unicode values align in columns |
+| Latin display | Marcellus | A Trajan revival. Roman inscriptional capitals — even spacing, chisel-cut strokes — are the closest typographic cousin to how hieroglyphs were actually carved |
+| Arabic body | IBM Plex Sans Arabic | Same humanist skeleton as Inter, so the scripts pair without one looking borrowed; proper harakat handling |
+| Arabic display | Noto Naskh Arabic | Naskh carries the weight for Arabic that Trajan carries for Latin. Heading both scripts with the same *kind* of face is what makes a bilingual layout feel designed rather than translated |
+| Hieroglyphs | Noto Sans Egyptian Hieroglyphs | A correctness fix, not a taste call — see below |
+
+The hieroglyph face is the one that matters. The sign database is
+Unicode Egyptian Hieroglyphs, so rendering it depends on the visitor
+having a font covering U+13000–U+1342F. Most do not: the usual
+system fallbacks were Segoe UI Historic, New Athena Unicode and
+GardinerA, and a visitor without them sees a tofu box for all 274
+signs. An AI heritage product showing tofu for every hieroglyph is
+not shippable, so the subset is shipped. Only the
+`egyptian-hieroglyphs` subset is requested.
+
+`fontVariables(locale)` applies the Arabic faces **only on Arabic
+routes**. A font is downloaded when a rendered element matches it, so
+leaving the variables undefined on English pages means the Arabic
+files are never fetched — without giving up Arabic typography where
+it is wanted. Verified: `/en` lists all five faces with the Arabic
+ones `unloaded`; `/ar` reports IBM Plex Sans Arabic and Noto Naskh
+Arabic as the body and display faces.
+
+The theme itself also swaps the type system at the token level:
+`html[dir="rtl"]` redefines `--font-sans` and `--font-display`, so no
+component knows or cares which script it is rendering.
 
 RTL is handled structurally. Layout uses logical properties
 (`ms-`, `pe-`, `start-`, `end-`) and `dir="rtl"` on `<html>` is
@@ -313,10 +391,21 @@ Some things are stubbed rather than faked, and that is a choice:
   installed and lazy-loaded, but shipping a WebXR experience that
   cannot be tested on real devices would be worse than not
   shipping one.
-- **Prisma** backs PostgreSQL when `DATABASE_URL` is set. The
-  repository interface is the contract; the in-memory dataset and
-  the Prisma implementation are interchangeable, so the app runs
-  with no database and full functionality for content reads.
+- **Prisma** backs PostgreSQL for writes when `DATABASE_URL` is
+  set. Content reads stay on the curated dataset so a build never
+  depends on the production database being reachable.
 - **BullMQ/Redis** are provisioned by `docker-compose.yml` for
   translation and embedding jobs. The synchronous path is
   complete; the queue is for scale, not correctness.
+- **The theme wipe was verified without pixels.** The theme
+  switch, both palettes, the toggle's end states and the contrast
+  ratios were all measured in the browser. The animation itself
+  was not: the test browser reports `document.hidden === true`, and
+  view transitions refuse to run in a hidden document — `ready`
+  rejects with *"Transition was aborted because of invalid state"*.
+  That rejection is why `startViewTransition` is wrapped in a
+  `try`/`catch` and both of its promises are handled: a browser
+  that refuses the wipe still gets the theme, via the crossfade.
+  End states were confirmed by disabling transitions, which makes
+  the animated properties resolve immediately instead of freezing.
+  The wipe needs one pass on a visible browser before release.

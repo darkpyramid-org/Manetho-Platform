@@ -1,4 +1,4 @@
-import type { MuseumTour, TourStop } from "@/types/museum";
+﻿import type { MuseumTour, TourStop } from "@/types/museum";
 
 /**
  * Seed museum tours (spec §62).
@@ -27,6 +27,7 @@ export const tours: MuseumTour[] = [
     durationMinutes: 25,
     language: "en",
     accessibility: "full",
+    status: "PUBLISHED",
     theme: "Royal burial",
     stops: [
       stop(
@@ -72,6 +73,7 @@ export const tours: MuseumTour[] = [
     durationMinutes: 30,
     language: "en",
     accessibility: "full",
+    status: "PUBLISHED",
     theme: "Funerary beliefs",
     stops: [
       stop(
@@ -109,6 +111,7 @@ export const tours: MuseumTour[] = [
     durationMinutes: 40,
     language: "en",
     accessibility: "partial",
+    status: "PUBLISHED",
     theme: "Royal history",
     stops: [
       stop(
@@ -154,6 +157,7 @@ export const tours: MuseumTour[] = [
     durationMinutes: 20,
     language: "en",
     accessibility: "full",
+    status: "PUBLISHED",
     theme: "Middle Kingdom",
     stops: [
       stop(
@@ -191,6 +195,7 @@ export const tours: MuseumTour[] = [
     durationMinutes: 18,
     language: "en",
     accessibility: "full",
+    status: "PUBLISHED",
     theme: "Religion and magic",
     stops: [
       stop(

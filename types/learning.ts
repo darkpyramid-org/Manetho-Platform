@@ -1,4 +1,4 @@
-import type { UUID } from "./common";
+import type { UUID, ContentStatus } from "./common";
 
 export interface LearningCourse {
   id: UUID;
@@ -8,6 +8,8 @@ export interface LearningCourse {
   level: "beginner" | "intermediate" | "advanced";
   lessons: LearningLesson[];
   coverImage?: string;
+  /** Editorial status. Mirrors the Prisma Course.status column. */
+  status: ContentStatus;
 }
 
 export interface LearningLesson {

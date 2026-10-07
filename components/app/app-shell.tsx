@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Link, usePathname } from "@/lib/i18n/navigation";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -98,6 +99,7 @@ export function AppShell({
             {installable ? (
               <InstallButton setInstallable={setInstallable} />
             ) : null}
+            <ThemeToggle />
           </div>
         </div>
 

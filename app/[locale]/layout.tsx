@@ -9,7 +9,9 @@ import {
 import { routing } from "@/i18n.config";
 import { localeDirection } from "@/lib/i18n/navigation";
 import { isDemoMode } from "@/lib/features";
+import { fontVariables } from "@/lib/fonts";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
+import { ThemeScript } from "@/components/theme/theme-script";
 import "./globals.css";
 
 /** Pre-render both locales. */
@@ -18,7 +20,12 @@ export function generateStaticParams() {
 }
 
 export const viewport: Viewport = {
-  themeColor: "#09090d",
+  // Both themes declare a browser-chrome colour, so the address
+  // bar is not obsidian on a light page or vice versa.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f2e7" },
+    { media: "(prefers-color-scheme: dark)", color: "#09090d" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -99,8 +106,16 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} dir={dir} suppressHydrationWarning>
+    <html
+      lang={locale}
+      dir={dir}
+      className={fontVariables(locale)}
+      suppressHydrationWarning
+    >
       <body className="min-h-dvh bg-obsidian text-papyrus antialiased">
+        {/* Applies the stored or system theme before first
+            paint, so there is no flash of the wrong theme. */}
+        <ThemeScript />
         <NextIntlClientProvider
           locale={locale}
           timeZone="UTC"

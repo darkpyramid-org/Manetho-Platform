@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Menu, X, Languages } from "lucide-react";
 import { Link, usePathname } from "@/lib/i18n/navigation";
 import { Button, IconButton } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
 
 /**
@@ -85,6 +86,7 @@ export function SiteHeader() {
 
         <div className="ms-auto flex items-center gap-2 md:ms-0">
           <LanguageSwitcher currentLocale={locale} />
+          <ThemeToggle />
           <Button
             asChild
             size="sm"

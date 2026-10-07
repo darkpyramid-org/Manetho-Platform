@@ -1,4 +1,4 @@
-import type { BoundingBox, ConfidenceLevel, Source, UUID } from "./common";
+import type { BoundingBox, ConfidenceLevel, Source } from "./common";
 
 /**
  * Hieroglyphic sign (spec §20).
