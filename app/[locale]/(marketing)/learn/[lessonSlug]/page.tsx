@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Link } from "@/lib/i18n/navigation";
 import { LessonReader } from "@/components/learning/lesson-reader";
+import { signRefMap } from "@/lib/data/sign-refs";
 import { Button } from "@/components/ui/button";
 import { allLessons, findLesson, courses } from "@/lib/data";
 import type { Locale } from "@/i18n.config";
@@ -60,7 +61,14 @@ export default async function LessonPage({
         </Link>
       </Button>
 
-      <LessonReader lesson={lesson} />
+      <LessonReader
+        lesson={lesson}
+        signLookupMap={signRefMap([
+          ...lesson.signIds,
+          ...(lesson.content.flatMap((section) => section.signIds ?? [])),
+          ...(lesson.quiz?.questions.map((q) => q.signId) ?? []),
+        ])}
+      />
 
       <nav
         aria-label="Lesson navigation"

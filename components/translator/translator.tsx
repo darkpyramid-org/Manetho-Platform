@@ -15,8 +15,7 @@ import {
   SamplePicker,
 } from "@/components/translator/image-intake";
 import { TranslationResultView } from "@/components/translator/translation-result";
-import { hieroglyphRepository } from "@/lib/data";
-import type { TranslationResult } from "@/types/hieroglyph";
+import type { SignRef, TranslationResult } from "@/types/hieroglyph";
 
 /**
  * Translator workspace (spec §20, §23, §77).
@@ -27,6 +26,7 @@ import type { TranslationResult } from "@/types/hieroglyph";
  */
 export function Translator({
   samples,
+  palette,
 }: {
   samples: Array<{
     id: string;
@@ -36,6 +36,12 @@ export function Translator({
     width: number;
     height: number;
   }>;
+  /**
+   * Resolved by the server page. Passing this rather than
+   * importing the repository here is what keeps the 274-sign
+   * dataset out of this route's JavaScript bundle.
+   */
+  palette: SignRef[];
 }) {
   const t = useTranslations("translate");
   const te = useTranslations("errors");
@@ -156,7 +162,7 @@ export function Translator({
             </p>
           ) : null}
 
-          {showManual ? <ManualSignPicker /> : null}
+          {showManual ? <ManualSignPicker palette={palette} /> : null}
 
           <SamplePicker samples={samples} />
         </>
@@ -195,7 +201,7 @@ export function Translator({
  * The escape hatch when recognition is not confident: the
  * visitor picks the signs and Manetho transliterates them.
  */
-function ManualSignPicker() {
+function ManualSignPicker({ palette }: { palette: SignRef[] }) {
   const t = useTranslations("translate");
   const manualSigns = useTranslatorStore((state) => state.manualSigns);
   const addManualSign = useTranslatorStore((state) => state.addManualSign);
@@ -206,16 +212,8 @@ function ManualSignPicker() {
     (state) => state.clearManualSigns,
   );
 
-  // A small, useful palette: the uniliterals plus the most
-  // common triliterals.
-  const palette = [
-    "G001", "D021", "G017", "N035", "X001", "D046", "R008", "S034",
-    "O001", "F035", "L001", "G005", "R011", "D010", "V010", "Y003",
-  ];
-
-  const signs = palette
-    .map((code) => signLookup(code))
-    .filter((sign): sign is NonNullable<typeof sign> => Boolean(sign));
+  // Resolved on the server; see lib/data/sign-refs.ts.
+  const signs = palette;
 
   const reading = manualSigns
     .map((code) => signs.find((sign) => sign.gardinerCode === code))
@@ -310,9 +308,4 @@ function ManualSignPicker() {
       </CardContent>
     </Card>
   );
-}
-
-/** Local sign lookup so the palette renders without a fetch. */
-function signLookup(code: string) {
-  return hieroglyphRepository.get(code);
 }

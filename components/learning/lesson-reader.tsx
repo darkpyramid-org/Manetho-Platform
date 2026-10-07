@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Glyph } from "@/components/hieroglyph/sign-display";
 import type { LearningLesson, Quiz } from "@/types/learning";
-import { hieroglyphRepository } from "@/lib/data";
+import type { SignRef } from "@/types/hieroglyph";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,7 +16,18 @@ import { cn } from "@/lib/utils";
  * Renders lesson sections and a quiz that always explains
  * its answers — including the ones you got wrong.
  */
-export function LessonReader({ lesson }: { lesson: LearningLesson }) {
+export function LessonReader({
+  lesson,
+  signLookupMap,
+}: {
+  lesson: LearningLesson;
+  /**
+   * The signs this lesson references, resolved on the server.
+   * Importing the repository here would ship all 274 signs to
+   * read at most 26 of them.
+   */
+  signLookupMap: Record<string, SignRef>;
+}) {
   const t = useTranslations("learn");
 
   return (
@@ -62,7 +73,7 @@ export function LessonReader({ lesson }: { lesson: LearningLesson }) {
               {section.signIds && section.signIds.length > 0 ? (
                 <div className="mt-4 flex flex-wrap gap-2">
                   {section.signIds.map((code) => (
-                    <SignPill key={code} gardinerCode={code} />
+                    <SignPill key={code} sign={signLookupMap[code]} />
                   ))}
                 </div>
               ) : null}
@@ -71,13 +82,14 @@ export function LessonReader({ lesson }: { lesson: LearningLesson }) {
         ))}
       </div>
 
-      {lesson.quiz ? <Quiz quiz={lesson.quiz} /> : null}
+      {lesson.quiz ? (
+        <Quiz quiz={lesson.quiz} signs={signLookupMap} />
+      ) : null}
     </article>
   );
 }
 
-function SignPill({ gardinerCode }: { gardinerCode: string }) {
-  const sign = signLookup(gardinerCode);
+function SignPill({ sign }: { sign: SignRef | undefined }) {
   if (!sign) return null;
   return (
     <span
@@ -93,7 +105,13 @@ function SignPill({ gardinerCode }: { gardinerCode: string }) {
 }
 
 /** Quiz with per-question explanations (spec §45). */
-function Quiz({ quiz }: { quiz: Quiz }) {
+function Quiz({
+  quiz,
+  signs,
+}: {
+  quiz: Quiz;
+  signs: Record<string, SignRef>;
+}) {
   const t = useTranslations("learn");
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -139,7 +157,7 @@ function Quiz({ quiz }: { quiz: Quiz }) {
                   </p>
 
                   {question.signId ? (
-                    <SignPill gardinerCode={question.signId} />
+                    <SignPill sign={signs[question.signId]} />
                   ) : null}
 
                   <ul className="space-y-2">
@@ -261,7 +279,3 @@ function Quiz({ quiz }: { quiz: Quiz }) {
   );
 }
 
-/** Local sign lookup (the data layer is pure and browser-safe). */
-function signLookup(code: string) {
-  return hieroglyphRepository.get(code);
-}

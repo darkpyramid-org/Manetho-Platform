@@ -37,6 +37,30 @@ export type HieroglyphCategory =
   | "M" | "N" | "NL" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V"
   | "W" | "X" | "Y" | "Z" | "Aa";
 
+/**
+ * The subset of a sign that client components need in order to
+ * render it.
+ *
+ * This exists because a full HieroglyphSign is ~500 bytes of
+ * description, provenance and variant data, and the whole
+ * database is 146 KB. A client component that imported the
+ * repository to look up a handful of signs shipped all of it to
+ * every visitor — 95 KB of JavaScript on the translator, the
+ * scanner and the lesson reader.
+ *
+ * Server components resolve signs and pass these instead, so the
+ * dataset stays on the server. Discovery genuinely needs all 274
+ * signs to filter them instantly, and it is the one place the
+ * full data is correct to ship.
+ */
+export interface SignRef {
+  gardinerCode: string;
+  glyph: string;
+  name: string;
+  phoneticValues: string[];
+  ideographicMeaning?: string;
+}
+
 export const hieroglyphCategoryLabels: Record<HieroglyphCategory, string> = {
   A: "A — Man and his occupations",
   B: "B — Woman and her occupations",

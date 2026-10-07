@@ -56,12 +56,13 @@ import {
  * subset is requested.
  *
  * Preloading is deliberate. Inter and Marcellus are on the
- * critical path of every page. The hieroglyph face is preloaded
- * because the logo glyph is above the fold and there is no
- * metric-adjusted fallback that can substitute for a missing
- * glyph. The Arabic faces are NOT preloaded: the class that
- * defines them is only applied on Arabic routes, so English
- * pages never reference — and therefore never download — them.
+ * critical path of every page and are small enough to justify it.
+ * The hieroglyph face is not preloaded despite the logo glyph
+ * being above the fold, because at 263 KB it would dominate the
+ * critical path of every route to serve one glyph. The Arabic
+ * faces are not preloaded either: the class that defines them is
+ * only applied on Arabic routes, so English pages never
+ * reference — and therefore never download — them.
  */
 
 /** Latin body. Variable weight 100–900 for one file, not nine. */
@@ -104,13 +105,28 @@ export const naskhArabic = Noto_Naskh_Arabic({
   preload: false,
 });
 
-/** Egyptian Hieroglyphs. Correctness, not decoration. */
+/**
+ * Egyptian Hieroglyphs. Correctness, not decoration.
+ *
+ * Not preloaded, and that is a deliberate trade. The file is
+ * 263 KB — by some distance the largest asset the app ships —
+ * because the Egyptian Hieroglyphs block has over a thousand
+ * complex outlines. Preloading it put it on the critical path of
+ * every page, including the admin and learning routes, to serve a
+ * single glyph in the header logo.
+ *
+ * With display: "swap" the page paints immediately in the
+ * fallback and the glyphs arrive a moment later. A logo that
+ * settles slightly late is far cheaper than first paint blocked
+ * on 263 KB of font data, and on a warm cache the difference is
+ * invisible.
+ */
 export const hieroglyphs = Noto_Sans_Egyptian_Hieroglyphs({
   subsets: ["egyptian-hieroglyphs"],
   weight: "400",
   display: "swap",
   variable: "--mf-hiero",
-  preload: true,
+  preload: false,
 });
 
 /**

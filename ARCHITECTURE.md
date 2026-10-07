@@ -232,6 +232,64 @@ Tailwind v4 with a CSS-first config: the design tokens live in
 `tailwind.config.js`. Obsidian and charcoal surfaces, sandstone
 text, ancient gold accents, papyrus highlights.
 
+### Client bundle budget
+
+The rule is that **server data stays on the server**, and it is a
+rule with teeth, because the obvious way to write these components
+breaks it silently.
+
+The translator and the lesson reader both needed to look up a
+handful of signs. Both did it by importing `hieroglyphRepository`
+into a `"use client"` file, which shipped the entire 274-sign
+database — 242 KB of names, descriptions and provenance — to every
+visitor, in order to render sixteen glyphs. Typechecking passed,
+the build passed, and the route reported a plausible size.
+
+The fix is `SignRef`: the five fields a client component actually
+renders. Server pages resolve signs and pass them as props, which
+is also cheaper because the props are part of the statically
+generated page rather than a separate chunk.
+`lib/data/sign-refs.ts` owns the projection, and
+`tests/unit/sign-projection.test.ts` asserts it stays faithful —
+including that every sign referenced by any lesson, section or quiz
+question resolves, because a lesson referencing a sign outside the
+resolved set renders a silently blank pill.
+
+`discover` is the deliberate exception: it filters 274 signs as you
+type, so it genuinely needs the data client-side. The page already
+projects it to eleven fields, dropping `sources` — which is 159.7 KB
+of the 242 KB, two thirds of the database, and is provenance nobody
+searches for.
+
+`npm run audit:bundle` reports the chunks each route actually
+requests and flags any containing full-dataset markers. It exits
+non-zero if a route measures 0 KB, because a silent read failure
+once made it print "clean" for every route while measuring nothing —
+a false all-clear is worse than a crash.
+
+### Font weight
+
+`Noto Sans Egyptian Hieroglyphs` is 263 KB, by some distance the
+largest asset the app ships. It was preloaded, which put it on the
+critical path of every route — including admin and learning pages
+that need no glyphs at all — to serve one glyph in the header logo.
+It is now fetched on demand. A logo that settles a moment late is
+far cheaper than first paint blocked on 263 KB.
+
+`npm run audit:fonts` reports what the stylesheet makes reachable
+and cross-checks preload variants against the rendered HTML, because
+the filename convention alone is not proof of what is on the
+critical path.
+
+### Removed dependencies
+
+`framer-motion`, `three`, `@react-three/fiber`, `@react-three/drei`,
+`react-hook-form` and `@radix-ui/react-toast` were declared but never
+imported. None reached a bundle — a dependency nothing imports costs
+nothing at runtime — but they were load-bearing documentation for a
+WebXR experience that does not exist, and this document claimed
+Three.js was "installed and lazy-loaded" when it was simply unused.
+
 ### Theming
 
 There are two themes and no `dark:` variants anywhere. The dark
@@ -387,9 +445,11 @@ Some things are stubbed rather than faked, and that is a choice:
   A real IdP plugs into `getSession()`; nothing else changes.
 - **Voice** uses the browser's Web Speech API, which is real, so
   there is no reason to simulate it.
-- **AR/VR** are behind flags that default off. Three.js is
-  installed and lazy-loaded, but shipping a WebXR experience that
-  cannot be tested on real devices would be worse than not
+- **AR/VR** are behind flags that default off. Three.js,
+  `@react-three/fiber` and `@react-three/drei` were declared as
+  dependencies and never imported, so they were removed rather than
+  left standing as a claim that a WebXR experience exists. Shipping
+  one that cannot be tested on real devices would be worse than not
   shipping one.
 - **Prisma** backs PostgreSQL for writes when `DATABASE_URL` is
   set. Content reads stay on the curated dataset so a build never

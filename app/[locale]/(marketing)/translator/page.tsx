@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Translator } from "@/components/translator/translator";
+import { manualSignPalette } from "@/lib/data/sign-refs";
 import { DemoBadge } from "@/components/ui/badge";
 import { sampleInscriptions } from "@/lib/data";
 import { isDemoMode } from "@/lib/features";
@@ -45,7 +46,7 @@ export default async function TranslatorPage({
         </p>
       </header>
 
-      <Translator samples={samples} />
+      <Translator samples={samples} palette={manualSignPalette()} />
     </div>
   );
 }

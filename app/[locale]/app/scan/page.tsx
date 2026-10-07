@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Translator } from "@/components/translator/translator";
+import { manualSignPalette } from "@/lib/data/sign-refs";
 import { sampleInscriptions } from "@/lib/data";
 import type { Locale } from "@/i18n.config";
 
@@ -26,7 +27,7 @@ export default async function ScanPage({
         <p className="mt-2 text-sm text-sandstone">{t("subtitle")}</p>
       </header>
 
-      <Translator samples={sampleInscriptions()} />
+      <Translator samples={sampleInscriptions()} palette={manualSignPalette()} />
     </div>
   );
 }
