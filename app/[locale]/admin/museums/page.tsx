@@ -30,7 +30,9 @@ export default async function AdminMuseumsPage({
   const tm = await getTranslations({ locale, namespace: "museums" });
   const session = await getSession();
 
-  if (!can(session, "museum:manage")) {
+  // Read-only view of museum records and floor plans; nothing
+  // here mutates anything.
+  if (!can(session, "content:read")) {
     return (
       <Card className="border-warning/40">
         <CardContent className="p-5">

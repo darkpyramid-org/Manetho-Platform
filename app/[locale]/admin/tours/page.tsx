@@ -22,7 +22,7 @@ export default async function AdminToursPage({
   const tm = await getTranslations({ locale, namespace: "museums" });
   const session = await getSession();
 
-  if (!can(session, "content:write")) {
+  if (!can(session, "content:read")) {
     return (
       <Card className="border-warning/40">
         <CardContent className="p-5">

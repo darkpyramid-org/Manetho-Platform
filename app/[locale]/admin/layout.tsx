@@ -40,7 +40,15 @@ export default async function AdminLayout({
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "admin" });
   const session = await getSession();
-  const allowed = can(session, "content:write");
+  // The admin section is read-only: every view here renders
+  // tables from the curated dataset and nothing in it mutates
+  // anything. Gating on content:write meant a guest saw an
+  // empty shell, because guest holds only USER — so the views
+  // were unreachable and effectively did not exist. content:read
+  // is the permission that actually describes what they do.
+  // Write operations, when added, gate on content:write.
+  const allowed = can(session, "content:read");
+  const canWrite = can(session, "content:write");
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -49,7 +57,7 @@ export default async function AdminLayout({
           <h1 className="font-display text-3xl text-papyrus sm:text-4xl">
             {t("title")}
           </h1>
-          <Badge tone={allowed ? "gold" : "neutral"}>
+          <Badge tone={canWrite ? "gold" : "neutral"}>
             {session.role}
           </Badge>
         </div>

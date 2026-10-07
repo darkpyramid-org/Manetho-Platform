@@ -28,7 +28,7 @@ export default async function AdminLessonsPage({
   const tl = await getTranslations({ locale, namespace: "learn" });
   const session = await getSession();
 
-  if (!can(session, "content:write")) {
+  if (!can(session, "content:read")) {
     return (
       <Card className="border-warning/40">
         <CardContent className="p-5">

@@ -32,7 +32,9 @@ export default async function AdminArtifactsPage({
   const tm = await getTranslations({ locale, namespace: "museums" });
   const session = await getSession();
 
-  if (!can(session, "content:write")) {
+  // Read-only view: it lists the dataset and mutates nothing,
+  // so it is gated on content:read. Guest holds that.
+  if (!can(session, "content:read")) {
     return (
       <Card className="border-warning/40">
         <CardContent className="p-5">

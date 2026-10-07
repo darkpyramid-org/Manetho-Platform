@@ -23,7 +23,7 @@ export default async function AdminHieroglyphsPage({
   const td = await getTranslations({ locale, namespace: "discover" });
   const session = await getSession();
 
-  if (!can(session, "content:write")) {
+  if (!can(session, "content:read")) {
     return (
       <Card className="border-warning/40">
         <CardContent className="p-5">
