@@ -3,16 +3,16 @@ import { streamAssistant } from "@/lib/ai/gateway";
 import { publicErrorMessage } from "@/lib/api/responses";
 import { artifactRepository, museumRepository, tourRepository } from "@/lib/data";
 import { features } from "@/lib/features";
+import {
+  enforceAiRateLimit,
+  resolveAiProvider,
+  assertAiProviderConfigured,
+} from "@/lib/api/ai-guards";
 import type { SignDetection } from "@/types/hieroglyph";
 
 /**
  * POST /api/ai/assistant (spec §43).
- *
- * Streams the assistant reply as Server-Sent Events so the
- * UI can render tokens as they arrive. Context (artifact,
- * translation result, tour stop) is resolved server-side
- * from ids, so the client never controls what the assistant
- * treats as fact.
+ * Streams the assistant reply as Server-Sent Events.
  */
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -92,6 +92,9 @@ function sse(
 }
 
 export async function POST(request: Request) {
+  const limited = enforceAiRateLimit(request);
+  if (limited) return limited;
+
   if (!features.aiAssistant) {
     return Response.json(
       {
@@ -134,10 +137,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const { message, mode, history, context, provider, locale } = parsed.data;
+  const { message, mode, history, context, provider: clientProvider, locale } = parsed.data;
+  const provider = resolveAiProvider(clientProvider);
+  const misconfigured = assertAiProviderConfigured(provider);
+  if (misconfigured) return misconfigured;
 
-  // Resolve context from ids on the server. The client can
-  // only name what it is looking at, not assert its contents.
   const artifact = context?.artifactId
     ? artifactRepository.get(context.artifactId)
     : undefined;
