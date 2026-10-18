@@ -2,7 +2,12 @@ import { z } from "zod";
 import { translateInscription } from "@/lib/ai/gateway";
 import { apiError, apiErrorFromException, apiOk } from "@/lib/api/responses";
 import { artifactRepository, museumRepository } from "@/lib/data";
-import { features, aiProvider } from "@/lib/features";
+import { features } from "@/lib/features";
+import {
+  enforceAiRateLimit,
+  resolveAiProvider,
+  assertAiProviderConfigured,
+} from "@/lib/api/ai-guards";
 import { persistTranslation } from "@/lib/server/translations";
 
 /**
@@ -54,6 +59,9 @@ export async function POST(request: Request) {
     );
   }
 
+  const limited = enforceAiRateLimit(request);
+  if (limited) return limited;
+
   let payload: unknown;
   try {
     payload = await request.json();
@@ -72,7 +80,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const { image, context, provider } = parsed.data;
+  const { image, context, provider: clientProvider } = parsed.data;
+  const provider = resolveAiProvider(clientProvider);
+  const misconfigured = assertAiProviderConfigured(provider);
+  if (misconfigured) return misconfigured;
 
   try {
     const artifact = context?.artifactId
@@ -92,19 +103,16 @@ export async function POST(request: Request) {
       provider,
     );
 
-    // Store the validated reading so it can be reviewed and
-    // audited later. This is best-effort: a database outage
-    // must not deny the visitor a reading they already earned.
     const storedId = await persistTranslation({
       result,
       artifactId: artifact?.id,
       imageKey: "upload",
-      provider: provider ?? aiProvider(),
+      provider: provider,
     });
 
     return apiOk(result, {
       meta: {
-        provider: provider ?? aiProvider(),
+        provider: provider,
         detections: result.detections.length,
         status: result.status,
         persisted: Boolean(storedId),
