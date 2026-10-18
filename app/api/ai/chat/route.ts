@@ -3,6 +3,11 @@ import { completeAssistant } from "@/lib/ai/gateway";
 import { apiError, apiErrorFromException, apiOk } from "@/lib/api/responses";
 import { artifactRepository, museumRepository } from "@/lib/data";
 import { features } from "@/lib/features";
+import {
+  enforceAiRateLimit,
+  resolveAiProvider,
+  assertAiProviderConfigured,
+} from "@/lib/api/ai-guards";
 import type { SignDetection } from "@/types/hieroglyph";
 
 /**
@@ -40,6 +45,9 @@ const RequestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const limited = enforceAiRateLimit(request);
+  if (limited) return limited;
+
   if (!features.aiAssistant) {
     return apiError(
       "FEATURE_DISABLED",
@@ -66,7 +74,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const { message, mode, history, context, provider, locale } = parsed.data;
+  const { message, mode, history, context, provider: clientProvider, locale } = parsed.data;
+  const provider = resolveAiProvider(clientProvider);
+  const misconfigured = assertAiProviderConfigured(provider);
+  if (misconfigured) return misconfigured;
 
   try {
     const artifact = context?.artifactId
