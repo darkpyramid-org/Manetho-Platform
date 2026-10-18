@@ -28,6 +28,9 @@ export async function generateMetadata({
  * the capability it needs. Guest mode has no elevated roles,
  * so the honest outcome here is a clear "no permission"
  * screen rather than an empty dashboard.
+ *
+ * When REQUIRE_AUTH/AUTH_ENABLED is true in production, guests
+ * cannot open admin; elevate via DEMO_ADMIN_SECRET or a real IdP.
  */
 export default async function AdminLayout({
   children,
@@ -40,15 +43,12 @@ export default async function AdminLayout({
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "admin" });
   const session = await getSession();
-  // The admin section is read-only: every view here renders
-  // tables from the curated dataset and nothing in it mutates
-  // anything. Gating on content:write meant a guest saw an
-  // empty shell, because guest holds only USER — so the views
-  // were unreachable and effectively did not exist. content:read
-  // is the permission that actually describes what they do.
-  // Write operations, when added, gate on content:write.
   const allowed = can(session, "content:read");
   const canWrite = can(session, "content:write");
+  const productionAuth =
+    process.env.NODE_ENV === "production" &&
+    (process.env.REQUIRE_AUTH === "true" || process.env.AUTH_ENABLED === "true");
+  const adminAllowed = productionAuth ? canWrite : allowed;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -66,7 +66,7 @@ export default async function AdminLayout({
 
       <AdminNav />
 
-      {!allowed ? (
+      {!adminAllowed ? (
         <Card className="border-warning/40">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-warning">
@@ -82,7 +82,7 @@ export default async function AdminLayout({
         </Card>
       ) : null}
 
-      {children}
+      {adminAllowed ? children : null}
     </div>
   );
 }
