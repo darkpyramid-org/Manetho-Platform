@@ -1,16 +1,16 @@
 import type { UserRole } from "@/types/common";
+import { cookies } from "next/headers";
+import { isWeakAuthSecret } from "@/lib/api/ai-guards";
 
 /**
  * Authentication and RBAC (spec §47).
  *
- * The MVP runs in guest mode: every visitor is a USER with
- * no persistence. The interface is the seam where a real
- * identity provider plugs in — nothing else in the app talks
- * to a session directly.
- *
- * Roles are ordered by capability. Each role's permissions are
- * derived, so adding a role means adding one entry rather than
- * auditing every check site.
+ * Demo / MVP modes:
+ * - No IdP: returns guest (USER).
+ * - DEMO_ADMIN_SECRET: set cookie or header `x-manetho-admin-secret` to elevate
+ *   to CONTENT_EDITOR for local/demo admin access (issue #2).
+ * - Production fail-closed: when AUTH_ENABLED/REQUIRE_AUTH is true, weak
+ *   AUTH_SECRET is rejected by instrumentation (issue #4).
  */
 
 export interface Session {
@@ -18,12 +18,10 @@ export interface Session {
   email: string;
   displayName: string;
   role: UserRole;
-  /** Institutions this user may edit, empty for global roles. */
   museumIds: string[];
   createdAt: string;
 }
 
-/** Capability → roles that hold it. */
 const PERMISSIONS = {
   "content:read": ["USER", "RESEARCHER", "MUSEUM_EDITOR", "MUSEUM_ADMIN", "CONTENT_EDITOR", "SUPER_ADMIN"],
   "content:write": ["MUSEUM_EDITOR", "MUSEUM_ADMIN", "CONTENT_EDITOR", "SUPER_ADMIN"],
@@ -47,7 +45,6 @@ const ALL_ROLES: UserRole[] = [
   "SUPER_ADMIN",
 ];
 
-/** True when the session's role holds the permission. */
 export function can(
   session: Session | null,
   permission: Permission,
@@ -57,7 +54,6 @@ export function can(
   return roles.includes(session.role);
 }
 
-/** The anonymous guest session used in guest mode. */
 export function guestSession(): Session {
   return {
     userId: "guest",
@@ -69,24 +65,39 @@ export function guestSession(): Session {
   };
 }
 
-/**
- * Resolve the current session.
- *
- * With no identity provider configured, this returns the
- * guest session. A deployment with a real IdP would read the
- * session cookie here instead — the rest of the app is
- * unchanged.
- */
+function demoAdminSession(): Session {
+  return {
+    userId: "demo-admin",
+    email: "admin@manetho.local",
+    displayName: "Demo Admin",
+    role: "CONTENT_EDITOR",
+    museumIds: [],
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export async function getSession(): Promise<Session> {
-  if (!process.env.DATABASE_URL && !process.env.AUTH_SECRET) {
-    return guestSession();
+  const secret = process.env.DEMO_ADMIN_SECRET?.trim();
+  if (secret && !isWeakAuthSecret(secret)) {
+    try {
+      const headerStore = await import("next/headers");
+      const h = await headerStore.headers();
+      const fromHeader = h.get("x-manetho-admin-secret");
+      if (fromHeader && fromHeader === secret) {
+        return demoAdminSession();
+      }
+      const cookieStore = await cookies();
+      const fromCookie = cookieStore.get("manetho_admin")?.value;
+      if (fromCookie && fromCookie === secret) {
+        return demoAdminSession();
+      }
+    } catch {
+      // cookies()/headers() unavailable outside request context
+    }
   }
-  // Guest mode until an IdP is wired in: no session cookie
-  // is trusted, so the visitor remains a USER.
   return guestSession();
 }
 
-/** Require a permission or return an error response. */
 export function requirePermission(
   session: Session,
   permission: Permission,
@@ -99,7 +110,10 @@ export function requirePermission(
   };
 }
 
-/** Human-readable role list for the admin UI. */
+export function requireWriteAccess(session: Session): ReturnType<typeof requirePermission> {
+  return requirePermission(session, "content:write");
+}
+
 export function roleSummaries(): Array<{
   role: UserRole;
   permissions: Permission[];
